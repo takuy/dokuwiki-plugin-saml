@@ -17,14 +17,21 @@ class action_plugin_adfs extends DokuWiki_Action_Plugin
 
     /**
      * Send the Federation Metadata about this Service Provider
-     *
+     * Otherwise, handle Logout for ADFS plugin
+     * 
      * @param Doku_Event $event
      * @param mixed $param
      */
     public function handle_request(Doku_Event $event, $param)
     {
+        global $ID;
+		global $auth;
         $act = act_clean($event->data);
-        if ($act != 'adfs' && $act != 'logout') return;
+		if($act == "logout" && $this->getConf('use_slo') && 
+			(isset($_GET["SAMLResponse"]) || isset($_GET["SAMLRequest"]))) {
+			$auth->logOff();
+		}
+        if ($act != 'adfs') return;
         $event->preventDefault();
         $event->stopPropagation();
 
@@ -32,10 +39,7 @@ class action_plugin_adfs extends DokuWiki_Action_Plugin
         $hlp = plugin_load('helper', 'adfs');
         $saml = $hlp->getSamlLib();
 
-        if ($act == "logout") { 
-            auth_logoff();
-            $saml->logout();
-        }
+ 
 
         try {
             header('Content-Type: application/samlmetadata+xml');
