@@ -10,6 +10,7 @@ $meta['certificate'] = array('');
 $meta['lowercase']   = array('onoff');
 $meta['autoprovisioning'] = array('onoff');
 $meta['use_slo']   = array('onoff');
+$meta["auto_login"] = array('multichoice','_choices' => array('never','after login','always'));
 $meta['userid_attr_name'] = array('string');
 $meta['fullname_attr_name'] = array('string');
 $meta['email_attr_name'] = array('string');
