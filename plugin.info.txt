@@ -1,7 +1,7 @@
-base   adfs
-author Andreas Gohr
-email  gohr@cosmocode.de
+base   saml
+author Sam Yelman
+email  sam.yelman@temple.edu
 date   2020-10-22
-name   ADFS SAML Auth plugin
-desc   Provides user authentication against Active Directory Federation Service via SAML 2.0
-url    http://www.dokuwiki.org/plugin:adfs
+name   SAML Auth plugin
+desc   Provides user authentication against SAML 2.0
+url    http://www.dokuwiki.org/plugin:saml

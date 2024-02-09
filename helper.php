@@ -1,11 +1,12 @@
 <?php
 
 /**
- * ADFS SAML authentication plugin
+ * SAML authentication plugin
  *
  * @author     Andreas Gohr <gohr@cosmocode.de>
+ * @author     Sam Yelman <sam.yelman@temple.edu>
  */
-class helper_plugin_adfs extends auth_plugin_authplain
+class helper_plugin_saml extends auth_plugin_authplain
 {
     /** @var OneLogin_Saml2_Auth */
     protected $saml;
@@ -55,7 +56,7 @@ class helper_plugin_adfs extends auth_plugin_authplain
                 ],
                 'attributeConsumingService' => [
                     'serviceName' => $xml_wiki_title,
-                    "serviceDescription" => 'ADFS auth plugin',
+                    "serviceDescription" => 'SAML auth plugin',
                     "requestedAttributes" => [],
                 ],
                 'singleLogoutService' => [
@@ -65,7 +66,7 @@ class helper_plugin_adfs extends auth_plugin_authplain
                 'NameIDFormat' => OneLogin_Saml2_Constants::NAMEID_EMAIL_ADDRESS,
             ],
 
-            // The ADFS server we talk to
+            // The SAML server we talk to
             'idp' => [
                 'entityId' => $this->getConf('idPEntityID'),
                 'singleSignOnService' => [

@@ -1,9 +1,9 @@
 <?php
 /**
- * texts for ADFS SAML Auth
+ * texts for SAML Auth
  */
 
 
-$lang['menu']    = 'ADFS Configuration Helper';
+$lang['menu']    = 'SAML Configuration Helper';
 
 

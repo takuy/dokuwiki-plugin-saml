@@ -1,11 +1,12 @@
 <?php
 
 /**
- * ADFS SAML authentication plugin
+ * SAML authentication plugin
  *
  * @author     Andreas Gohr <gohr@cosmocode.de>
+ * @author     Sam Yelman <sam.yelman@temple.edu>
  */
-class action_plugin_adfs extends DokuWiki_Action_Plugin
+class action_plugin_saml extends DokuWiki_Action_Plugin
 {
 
     /** @inheritdoc */
@@ -17,7 +18,7 @@ class action_plugin_adfs extends DokuWiki_Action_Plugin
 
     /**
      * Send the Federation Metadata about this Service Provider
-     * Otherwise, handle Logout for ADFS plugin
+     * Otherwise, handle Logout for SAML plugin
      * 
      * @param Doku_Event $event
      * @param mixed $param
@@ -31,12 +32,12 @@ class action_plugin_adfs extends DokuWiki_Action_Plugin
 			(isset($_GET["SAMLResponse"]) || isset($_GET["SAMLRequest"]))) {
 			$auth->logOff();
 		}
-        if ($act != 'adfs') return;
+        if ($act != 'saml') return;
         $event->preventDefault();
         $event->stopPropagation();
 
-        /** @var helper_plugin_adfs $hlp */
-        $hlp = plugin_load('helper', 'adfs');
+        /** @var helper_plugin_saml $hlp */
+        $hlp = plugin_load('helper', 'saml');
         $saml = $hlp->getSamlLib();
 
  
@@ -62,7 +63,7 @@ class action_plugin_adfs extends DokuWiki_Action_Plugin
     {
         global $ID;
         global $conf;
-        if ($conf['authtype'] != 'adfs') return;
+        if ($conf['authtype'] != 'saml') return;
 
         $event->data = new Doku_Form(array());
         $event->data->addElement('<a href="' . wl($ID, array('do' => 'login')) . '">Login here</a>');

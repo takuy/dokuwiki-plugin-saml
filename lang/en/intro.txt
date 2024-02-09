@@ -1,4 +1,4 @@
-====== ADFS Configuration Helper ======
+====== SAML Configuration Helper ======
 
 This tool helps you to find the right configuration paramters for the ADSF plugin by parsing the Federation metadata provided by your Identity Provider.
 

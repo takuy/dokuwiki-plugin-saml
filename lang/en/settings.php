@@ -1,6 +1,6 @@
 <?php
 /**
- * Configuration texts for ADFS SAML Auth
+ * Configuration texts for SAML Auth
  */
 
 $lang['idPEntityID'] = 'The ID of your SAML server. Usually <code>http://<i>&lt;yourserver&gt;</i>/adfs/services/trust</code>';

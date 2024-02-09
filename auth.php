@@ -1,10 +1,11 @@
 <?php
 /**
- * ADFS SAML authentication plugin
+ * SAML authentication plugin
  *
  * @author     Andreas Gohr <gohr@cosmocode.de>
+ * @author     Sam Yelman <sam.yelman@temple.edu>
  */
-class auth_plugin_adfs extends auth_plugin_authplain
+class auth_plugin_saml extends auth_plugin_authplain
 {
     /** @var OneLogin_Saml2_Auth the SAML authentication library */
     protected $saml;
@@ -24,8 +25,8 @@ class auth_plugin_adfs extends auth_plugin_authplain
         $this->cando['modMail'] = false;
         $this->cando['modGroups'] = false;
 
-        /** @var helper_plugin_adfs $hlp */
-        $hlp = plugin_load('helper', 'adfs');
+        /** @var helper_plugin_saml $hlp */
+        $hlp = plugin_load('helper', 'saml');
         $this->saml = $hlp->getSamlLib();
     }
 
@@ -57,7 +58,7 @@ class auth_plugin_adfs extends auth_plugin_authplain
         } else {
             $autoLoginConf = $this->getConf("auto_login");
             $autoLogin = ($autoLoginConf == "never") ? false : (
-                ($autoLoginConf == "after login" && get_doku_pref('adfs_autologin', 0)) || 
+                ($autoLoginConf == "after login" && get_doku_pref('saml_autologin', 0)) || 
                 ($autoLoginConf == "always"));
         }
 
@@ -65,13 +66,13 @@ class auth_plugin_adfs extends auth_plugin_authplain
             // Initiate SAML auth request
             $url = $this->saml->login(
                 null, // returnTo: is configured in our settings
-                [], // parameter: we do not send any additional paramters to ADFS
+                [], // parameter: we do not send any additional paramters to ndreas
                 false, // forceAuthn: would skip any available SSO data, not what we want
                 false, // isPassive: would avoid all user interaction, not what we want
                 true, // stay: do not redirect, we do that ourselves
-                false // setNamedIdPolicy: we need to disable this or ADFS complains about our request
+                false // setNamedIdPolicy: we need to disable this or SAML complains about our request
             );
-            $_SESSION['adfs_redirect'] = wl($ID, '', true, '&'); // remember current page
+            $_SESSION['saml_redirect'] = wl($ID, '', true, '&'); // remember current page
             send_redirect($url);
         } elseif (isset($_POST['SAMLResponse'])) {
             // consume SAML response
@@ -114,19 +115,19 @@ class auth_plugin_adfs extends auth_plugin_authplain
                     $_SESSION[DOKU_COOKIE]['auth']['buid'] = auth_browseruid(); // cache login
 
                     // successful login
-                    if (isset($_SESSION['adfs_redirect'])) {
-                        $go = $_SESSION['adfs_redirect'];
-                        unset($_SESSION['adfs_redirect']);
+                    if (isset($_SESSION['saml_redirect'])) {
+                        $go = $_SESSION['saml_redirect'];
+                        unset($_SESSION['saml_redirect']);
                     } else {
                         $go = wl($ID, '', true, '&');
                     }
-                    set_doku_pref('adfs_autologin', 1);
+                    set_doku_pref('saml_autologin', 1);
                     send_redirect($go); // decouple the history from POST
                     return true;
                 } else {
                     $this->logOff();
 
-                    msg('ADFS: '.hsc($this->saml->getLastErrorReason()), -1);
+                    msg('SAML: '.hsc($this->saml->getLastErrorReason()), -1);
                     return false;
                 }
             } catch (Exception $e) {
@@ -144,9 +145,9 @@ class auth_plugin_adfs extends auth_plugin_authplain
     public function logOff()
     {
 		global $ID;
-        set_doku_pref('adfs_autologin', 0);
+        set_doku_pref('saml_autologin', 0);
 		
-		$hlp = plugin_load('helper', 'adfs');
+		$hlp = plugin_load('helper', 'saml');
 		$saml = $hlp->getSamlLib();
 		
 		/* By default, try to return to user to the page they were just viewing */
@@ -158,7 +159,7 @@ class auth_plugin_adfs extends auth_plugin_authplain
 			$errors = $saml->getErrors();
 
 			if (!empty($errors)) {
-				  msg('ADFS SLO: '. implode(', ', $errors) . '; ' . $saml->getLastErrorReason(), -1);
+				  msg('SAML SLO: '. implode(', ', $errors) . '; ' . $saml->getLastErrorReason(), -1);
 			}
 			
 			/* If a RelayState is defined in the Request, this is where we want to redirect to afterwards */            

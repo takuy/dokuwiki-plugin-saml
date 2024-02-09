@@ -1,6 +1,6 @@
 <?php
 /**
- * Configuration metadata for ADFS SAML Auth
+ * Configuration metadata for SAML Auth
 */
 
 $meta['idPEntityID'] = array('string');

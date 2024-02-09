@@ -1,11 +1,12 @@
 <?php
 
 /**
- * ADFS SAML authentication plugin
+ * SAML authentication plugin
  *
  * @author     Andreas Gohr <gohr@cosmocode.de>
+ * @author     Sam Yelman <sam.yelman@temple.edu>
  */
-class admin_plugin_adfs extends DokuWiki_Admin_Plugin
+class admin_plugin_saml extends DokuWiki_Admin_Plugin
 {
     protected $xml = '';
 

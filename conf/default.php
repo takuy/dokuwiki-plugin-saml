@@ -1,6 +1,6 @@
 <?php
 /**
- * Configuration defaults for ADFS SAML Auth
+ * Configuration defaults for SAML Auth
 */
 
 $conf['idPEntityID'] = 'set me';
