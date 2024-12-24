@@ -5,6 +5,9 @@
  * @author     Andreas Gohr <gohr@cosmocode.de>
  * @author     Sam Yelman <sam.yelman@temple.edu>
  */
+
+use dokuwiki\Utf8\PhpString;
+
 class auth_plugin_saml extends auth_plugin_authplain
 {
     /** @var OneLogin_Saml2_Auth the SAML authentication library */
@@ -36,7 +39,7 @@ class auth_plugin_saml extends auth_plugin_authplain
      * If not logged in, redirects to SAML provider
      */
     public function trustExternal($user, $pass, $sticky = false)
-    {	
+    {
         global $USERINFO;
         global $ID;
         global $ACT;
@@ -58,7 +61,7 @@ class auth_plugin_saml extends auth_plugin_authplain
         } else {
             $autoLoginConf = $this->getConf("auto_login");
             $autoLogin = ($autoLoginConf == "never") ? false : (
-                ($autoLoginConf == "after login" && get_doku_pref('saml_autologin', 0)) || 
+                ($autoLoginConf == "after login" && get_doku_pref('saml_autologin', 0)) ||
                 ($autoLoginConf == "always"));
         }
 
@@ -146,10 +149,10 @@ class auth_plugin_saml extends auth_plugin_authplain
     {
 		global $ID;
         set_doku_pref('saml_autologin', 0);
-		
+
 		$hlp = plugin_load('helper', 'saml');
 		$saml = $hlp->getSamlLib();
-		
+
 		/* By default, try to return to user to the page they were just viewing */
 		$redirTo = wl($ID, '', true, '&');
 
@@ -161,14 +164,14 @@ class auth_plugin_saml extends auth_plugin_authplain
 			if (!empty($errors)) {
 				  msg('SAML SLO: '. implode(', ', $errors) . '; ' . $saml->getLastErrorReason(), -1);
 			}
-			
-			/* If a RelayState is defined in the Request, this is where we want to redirect to afterwards */            
+
+			/* If a RelayState is defined in the Request, this is where we want to redirect to afterwards */
 			if(isset($_GET["RelayState"])) $redirTo = $_GET["RelayState"];
-		
+
 		/* If user initiates logout from the wiki itself */
 		} else if($this->getConf('use_slo')) {
 			$saml->logout($redirTo);
-		} 
+		}
 
 		/* Manually redirect user if we ever get here */
 		send_redirect($redirTo);
@@ -188,7 +191,7 @@ class auth_plugin_saml extends auth_plugin_authplain
             )
         );
         if ($this->getConf('lowercase')) {
-            return utf8_strtolower($user);
+            return PhpString::strtolower($user);
         } else {
             return $user;
         }
