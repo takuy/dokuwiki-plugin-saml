@@ -39,6 +39,13 @@ class OneLogin_Saml2_Response
     public $encrypted = false;
 
     /**
+     * The response contains an encrypted nameId in the assertion.
+     *
+     * @var bool
+     */
+    public $encryptedNameId = false;
+
+    /**
      * After validation, if it fail this var has the cause of the problem
      * @var string
      */
@@ -165,7 +172,7 @@ class OneLogin_Saml2_Response
                 }
 
                 $currentURL = OneLogin_Saml2_Utils::getSelfRoutedURLNoQuery();
-                
+
                 $responseInResponseTo = null;
                 if ($this->document->documentElement->hasAttribute('InResponseTo')) {
                     $responseInResponseTo = $this->document->documentElement->getAttribute('InResponseTo');
@@ -200,14 +207,12 @@ class OneLogin_Saml2_Response
                     );
                 }
 
-                if ($security['wantNameIdEncrypted']) {
-                    $encryptedIdNodes = $this->_queryAssertion('/saml:Subject/saml:EncryptedID/xenc:EncryptedData');
-                    if ($encryptedIdNodes->length != 1) {
-                        throw new OneLogin_Saml2_ValidationError(
-                            "The NameID of the Response is not encrypted and the SP requires it",
-                            OneLogin_Saml2_ValidationError::NO_ENCRYPTED_NAMEID
-                        );
-                    }
+                $this->encryptedNameId = $this->encryptedNameId || $this->_queryAssertion('/saml:Subject/saml:EncryptedID/xenc:EncryptedData')->length > 0;
+                if (!$this->encryptedNameId && $security['wantNameIdEncrypted']) {
+                    throw new OneLogin_Saml2_ValidationError(
+                        "The NameID of the Response is not encrypted and the SP requires it",
+                        OneLogin_Saml2_ValidationError::NO_ENCRYPTED_NAMEID
+                    );
                 }
 
                 // Validate Conditions element exists
@@ -218,7 +223,7 @@ class OneLogin_Saml2_Response
                     );
                 }
 
-                // Validate Asserion timestamps
+                // Validate Assertion timestamps
                 $this->validateTimestamps();
 
                 // Validate AuthnStatement element exists and is unique
@@ -357,22 +362,11 @@ class OneLogin_Saml2_Response
                         OneLogin_Saml2_ValidationError::NO_SIGNED_ASSERTION
                     );
                 }
-                
+
                 if ($security['wantMessagesSigned'] && !$hasSignedResponse) {
                     throw new OneLogin_Saml2_ValidationError(
                         "The Message of the Response is not signed and the SP requires it",
                         OneLogin_Saml2_ValidationError::NO_SIGNED_MESSAGE
-                    );
-                }
-            }
-
-            // Detect case not supported
-            if ($this->encrypted) {
-                $encryptedIDNodes = OneLogin_Saml2_Utils::query($this->decryptedDocument, '/samlp:Response/saml:Assertion/saml:Subject/saml:EncryptedID');
-                if ($encryptedIDNodes->length > 0) {
-                    throw new OneLogin_Saml2_ValidationError(
-                        'SAML Response that contains a an encrypted Assertion with encrypted nameId is not supported.',
-                        OneLogin_Saml2_ValidationError::NOT_SUPPORTED
                     );
                 }
             }
@@ -585,9 +579,15 @@ class OneLogin_Saml2_Response
         if ($encryptedIdDataEntries->length == 1) {
             $encryptedData = $encryptedIdDataEntries->item(0);
 
-            $key = $this->_settings->getSPkey();
+            $pem = $this->_settings->getSPkey();
+            if (empty($pem)) {
+                throw new OneLogin_Saml2_Error(
+                    "No private key available, check settings",
+                    OneLogin_Saml2_Error::PRIVATE_KEY_NOT_FOUND
+                );
+            }
             $seckey = new XMLSecurityKey(XMLSecurityKey::RSA_1_5, array('type'=>'private'));
-            $seckey->loadKey($key);
+            $seckey->loadKey($pem);
 
             $nameId = OneLogin_Saml2_Utils::decryptElement($encryptedData, $seckey);
 
@@ -600,8 +600,8 @@ class OneLogin_Saml2_Response
 
         $nameIdData = array();
 
+        $security = $this->_settings->getSecurityData();
         if (!isset($nameId)) {
-            $security = $this->_settings->getSecurityData();
             if ($security['wantNameId']) {
                 throw new OneLogin_Saml2_ValidationError(
                     "NameID not found in the assertion of the Response",
@@ -609,7 +609,7 @@ class OneLogin_Saml2_Response
                 );
             }
         } else {
-            if ($this->_settings->isStrict() && empty($nameId->nodeValue)) {
+            if ($this->_settings->isStrict() && $security['wantNameId'] && empty($nameId->nodeValue)) {
                 throw new OneLogin_Saml2_ValidationError(
                     "An empty NameID value found",
                     OneLogin_Saml2_ValidationError::EMPTY_NAMEID
@@ -624,7 +624,7 @@ class OneLogin_Saml2_Response
                         $spEntityId = $spData['entityId'];
                         if ($spEntityId != $nameId->getAttribute($attr)) {
                             throw new OneLogin_Saml2_ValidationError(
-                                "The SPNameQualifier value mistmatch the SP entityID value.",
+                                "The SPNameQualifier value mismatch the SP entityID value.",
                                 OneLogin_Saml2_ValidationError::SP_NAME_QUALIFIER_NAME_MISMATCH
                             );
                         }
@@ -779,6 +779,9 @@ class OneLogin_Saml2_Response
 
         $entries = $this->_queryAssertion('/saml:AttributeStatement/saml:Attribute');
 
+        $security = $this->_settings->getSecurityData();
+        $allowRepeatAttributeName = $security['allowRepeatAttributeName'];
+
         /** @var $entry DOMNode */
         foreach ($entries as $entry) {
             $attributeKeyNode = $entry->attributes->getNamedItem($keyName);
@@ -789,11 +792,13 @@ class OneLogin_Saml2_Response
 
             $attributeKeyName = $attributeKeyNode->nodeValue;
 
-            if (in_array($attributeKeyName, array_keys($attributes))) {
-                throw new OneLogin_Saml2_ValidationError(
-                    "Found an Attribute element with duplicated ".$keyName,
-                    OneLogin_Saml2_ValidationError::DUPLICATED_ATTRIBUTE_NAME_FOUND
-                );
+            if (in_array($attributeKeyName, array_keys($attributes), true)) {
+                if (!$allowRepeatAttributeName) {
+                    throw new OneLogin_Saml2_ValidationError(
+                        "Found an Attribute element with duplicated ".$keyName,
+                        OneLogin_Saml2_ValidationError::DUPLICATED_ATTRIBUTE_NAME_FOUND
+                    );
+                }
             }
 
             $attributeValues = array();
@@ -804,7 +809,11 @@ class OneLogin_Saml2_Response
                 }
             }
 
-            $attributes[$attributeKeyName] = $attributeValues;
+            if (in_array($attributeKeyName, array_keys($attributes), true)) {
+                $attributes[$attributeKeyName] = array_merge($attributes[$attributeKeyName], $attributeValues);
+            } else {
+                $attributes[$attributeKeyName] = $attributeValues;
+            }
         }
         return $attributes;
     }
@@ -974,9 +983,9 @@ class OneLogin_Saml2_Response
         $responseTag = '{'.OneLogin_Saml2_Constants::NS_SAMLP.'}Response';
         $assertionTag = '{'.OneLogin_Saml2_Constants::NS_SAML.'}Assertion';
 
-        $ocurrence = array_count_values($signedElements);
-        if ((in_array($responseTag, $signedElements) && $ocurrence[$responseTag] > 1) ||
-            (in_array($assertionTag, $signedElements) && $ocurrence[$assertionTag] > 1) ||
+        $occurrence = array_count_values($signedElements);
+        if ((in_array($responseTag, $signedElements) && $occurrence[$responseTag] > 1) ||
+            (in_array($assertionTag, $signedElements) && $occurrence[$assertionTag] > 1) ||
             !in_array($responseTag, $signedElements) && !in_array($assertionTag, $signedElements)
         ) {
             return false;
@@ -1059,7 +1068,7 @@ class OneLogin_Saml2_Response
     }
 
     /**
-     * Extracts nodes that match the query from the DOMDocument (Response Menssage)
+     * Extracts nodes that match the query from the DOMDocument (Response Message)
      *
      * @param string $query Xpath Expresion
      *
@@ -1120,7 +1129,7 @@ class OneLogin_Saml2_Response
                 $objKeyInfo->loadKey($pem, false, false);
             }
         }
-                
+
         if (empty($objKey->key)) {
             $objKey->loadKey($key);
         }
@@ -1130,6 +1139,17 @@ class OneLogin_Saml2_Response
         if ($check === false) {
             throw new Exception('Error: string from decrypted assertion could not be loaded into a XML document');
         }
+
+        // check if the decrypted assertion contains an encryptedID
+        $encryptedID = $decrypted->getElementsByTagName('EncryptedID')->item(0);
+        if ($encryptedID) {
+            // decrypt the encryptedID
+            $this->encryptedNameId = true;
+            $encryptedData = $encryptedID->getElementsByTagName('EncryptedData')->item(0);
+            $nameId = $this->decryptNameId($encryptedData, $pem);
+            OneLogin_Saml2_Utils::treeCopyReplace($encryptedID, $nameId);
+        }
+
         if ($encData->parentNode instanceof DOMDocument) {
             return $decrypted;
         } else {
@@ -1160,6 +1180,46 @@ class OneLogin_Saml2_Response
             $dom = new DOMDocument();
             return OneLogin_Saml2_Utils::loadXML($dom, $container->ownerDocument->saveXML());
         }
+    }
+
+    /**
+     * Decrypt EncryptedID element
+     *
+     * @param \DOMElement $encryptedData The encrypted data.
+     * @param string     $key            The private key
+     *
+     * @return \DOMElement  The decrypted element.
+     *
+     * @throws OneLogin_Saml2_Error
+     * @throws OneLogin_Saml2_ValidationError
+     */
+    private function decryptNameId(\DOMElement $encryptedData, string $pem)
+    {
+        $objenc = new XMLSecEnc();
+        $encData = $objenc->locateEncryptedData($encryptedData);
+        $objenc->setNode($encData);
+        $objenc->type = $encData->getAttribute("Type");
+        if (!$objKey = $objenc->locateKey()) {
+            throw new OneLogin_Saml2_ValidationError(
+                "Unknown algorithm",
+                ValidationError::KEY_ALGORITHM_ERROR
+            );
+        }
+        $key = null;
+        if ($objKeyInfo = $objenc->locateKeyInfo($objKey)) {
+            if ($objKeyInfo->isEncrypted) {
+                $objencKey = $objKeyInfo->encryptedCtx;
+                $objKeyInfo->loadKey($pem, false, false);
+                $key = $objencKey->decryptKey($objKeyInfo);
+            } else {
+                // symmetric encryption key support
+                $objKeyInfo->loadKey($pem, false, false);
+            }
+        }
+        if (empty($objKey->key)) {
+            $objKey->loadKey($key);
+        }
+        return OneLogin_Saml2_Utils::decryptElement($encryptedData, $objKey);
     }
 
     /**

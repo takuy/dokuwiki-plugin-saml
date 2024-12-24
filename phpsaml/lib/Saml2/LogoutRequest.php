@@ -106,6 +106,7 @@ class OneLogin_Saml2_LogoutRequest
             $sessionIndexStr = isset($sessionIndex) ? "<samlp:SessionIndex>{$sessionIndex}</samlp:SessionIndex>" : "";
 
             $spEntityId = htmlspecialchars($spData['entityId'], ENT_QUOTES);
+            $destination = $this->_settings->getIdPSLOUrl();
             $logoutRequest = <<<LOGOUTREQUEST
 <samlp:LogoutRequest
     xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
@@ -113,7 +114,7 @@ class OneLogin_Saml2_LogoutRequest
     ID="{$id}"
     Version="2.0"
     IssueInstant="{$issueInstant}"
-    Destination="{$idpData['singleLogoutService']['url']}">
+    Destination="{$destination}">
     <saml:Issuer>{$spEntityId}</saml:Issuer>
     {$nameIdObj}
     {$sessionIndexStr}
@@ -135,7 +136,7 @@ LOGOUTREQUEST;
 
 
     /**
-     * Returns the Logout Request defated, base64encoded, unsigned
+     * Returns the Logout Request deflated, base64encoded, unsigned
      *
      * @param bool|null $deflate Whether or not we should 'gzdeflate' the request body before we return it.
      *
@@ -320,7 +321,7 @@ LOGOUTREQUEST;
     }
 
     /**
-     * Checks if the Logout Request recieved is valid.
+     * Checks if the Logout Request received is valid.
      *
      * @param bool $retrieveParametersFromServer
      *
