@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Utils of OneLogin PHP Toolkit
+ * Utils of PHP Toolkit
  *
  * Defines several often used methods
  */
@@ -208,27 +208,29 @@ class OneLogin_Saml2_Utils
     /**
      * Returns a x509 cert (adding header & footer if required).
      *
-     * @param string  $cert  A x509 unformated cert
-     * @param bool    $heads True if we want to include head and footer
+     * @param string  $x509cert  A x509 unformated cert
+     * @param bool    $heads     True if we want to include head and footer
      *
      * @return string $x509 Formatted cert
      */
+     public static function formatCert($x509cert, $heads = true)
+     {
+         if (is_null($x509cert)) {
+           return;
+         }
 
-    public static function formatCert($cert, $heads = true)
-    {
-        $x509cert = str_replace(array("\x0D", "\r", "\n"), "", $cert);
-        if (!empty($x509cert)) {
-            $x509cert = str_replace('-----BEGIN CERTIFICATE-----', "", $x509cert);
-            $x509cert = str_replace('-----END CERTIFICATE-----', "", $x509cert);
-            $x509cert = str_replace(' ', '', $x509cert);
+         if (strpos($x509cert, '-----BEGIN CERTIFICATE-----') !== false) {
+             $x509cert = static::getStringBetween($x509cert, '-----BEGIN CERTIFICATE-----', '-----END CERTIFICATE-----');
+         }
 
-            if ($heads) {
-                $x509cert = "-----BEGIN CERTIFICATE-----\n".chunk_split($x509cert, 64, "\n")."-----END CERTIFICATE-----\n";
-            }
+         $x509cert = str_replace(array("\x0d", "\r", "\n", " "), '', $x509cert);
 
-        }
-        return $x509cert;
-    }
+         if ($heads && $x509cert !== '') {
+             $x509cert = "-----BEGIN CERTIFICATE-----\n".chunk_split($x509cert, 64, "\n")."-----END CERTIFICATE-----\n";
+         }
+
+         return $x509cert;
+     }
 
     /**
      * Returns a private key (adding header & footer if required).
@@ -300,6 +302,7 @@ class OneLogin_Saml2_Utils
      * @param bool         $stay       True if we want to stay (returns the url string) False to redirect
      *
      * @return string|null $url
+     * @phpstan-return ($stay is true ? string : never)
      *
      * @throws OneLogin_Saml2_Error
      */
@@ -494,7 +497,9 @@ class OneLogin_Saml2_Utils
         if (self::$_host) {
             $currentHost = self::$_host;
         } elseif (self::getProxyVars() && array_key_exists('HTTP_X_FORWARDED_HOST', $_SERVER)) {
-            $currentHost = $_SERVER['HTTP_X_FORWARDED_HOST'];
+            $currentHost = explode(',', $_SERVER['HTTP_X_FORWARDED_HOST']);
+            $values = array_values($currentHost);
+            $currentHost = array_shift($values);
         } elseif (array_key_exists('HTTP_HOST', $_SERVER)) {
             $currentHost = $_SERVER['HTTP_HOST'];
         } elseif (array_key_exists('SERVER_NAME', $_SERVER)) {
@@ -648,7 +653,7 @@ class OneLogin_Saml2_Utils
 
         $pos = strpos($selfRoutedURLNoQuery, "?");
         if ($pos !== false) {
-            $selfRoutedURLNoQuery = substr($selfRoutedURLNoQuery, 0, $pos-1);
+            $selfRoutedURLNoQuery = substr($selfRoutedURLNoQuery, 0, $pos);
         }
 
         return $selfRoutedURLNoQuery;
@@ -704,8 +709,10 @@ class OneLogin_Saml2_Utils
         if (!empty($baseURLPath)) {
             $result = $baseURLPath;
             if (!empty($info)) {
-                $path = explode('/', $info);
-                $extractedInfo = array_pop($path);
+                // Remove base path from the path info.
+                $extractedInfo = str_replace($baseURLPath, '', $info);
+                // Remove starting and ending slash.
+                $extractedInfo = trim($extractedInfo, '/');
                 if (!empty($extractedInfo)) {
                     $result .= $extractedInfo;
                 }
@@ -966,12 +973,12 @@ class OneLogin_Saml2_Utils
      */
     public static function deleteLocalSession()
     {
-
         if (OneLogin_Saml2_Utils::isSessionStarted()) {
+            session_unset();
             session_destroy();
+        } else {
+            $_SESSION = array();
         }
-
-        unset($_SESSION);
     }
 
     /**
@@ -1391,7 +1398,7 @@ class OneLogin_Saml2_Utils
      * Validates a signature (Message or Assertion).
      *
      * @param string|DomNode $xml            The element we should validate
-     * @param string|null    $cert           The pubic cert
+     * @param string|null    $cert           The public cert
      * @param string|null    $fingerprint    The fingerprint of the public cert
      * @param string|null    $fingerprintalg The algorithm used to get the fingerprint
      * @param string|null    $xpath          The xpath of the signed element
@@ -1546,7 +1553,7 @@ class OneLogin_Saml2_Utils
                     $objKey = OneLogin_Saml2_Utils::castKey($objKey, $signAlg, 'public');
                 } catch (Exception $e) {
                     $ex = new OneLogin_Saml2_ValidationError(
-                        "Invalid signAlg in the recieved ".$strMessageType,
+                        "Invalid signAlg in the received ".$strMessageType,
                         OneLogin_Saml2_ValidationError::INVALID_SIGNATURE
                     );
                     if (count($multiCerts) == 1) {
