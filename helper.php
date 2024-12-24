@@ -76,7 +76,7 @@ class helper_plugin_saml extends auth_plugin_authplain
                 'singleLogoutService' => [
                     'url' => $this->getConf('slo_endpoint'),
                     'binding' => OneLogin_Saml2_Constants::BINDING_HTTP_REDIRECT,
-                ],                
+                ],
                 'NameIDFormat' => OneLogin_Saml2_Constants::NAMEID_UNSPECIFIED,
                 'x509cert' => $cert,
             ],
@@ -84,7 +84,8 @@ class helper_plugin_saml extends auth_plugin_authplain
             'security' => [
                 'requestedAuthnContext' => false, // We let the AD decide what kind of authentication it uses
                 'wantNameId' => false, // Seems not to work otherwise
-                'destinationStrictlyMatches' => false
+                'destinationStrictlyMatches' => false,
+                'allowRepeatAttributeName' => true
             ],
 
             'organization' => array(
