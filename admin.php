@@ -6,6 +6,9 @@
  * @author     Andreas Gohr <gohr@cosmocode.de>
  * @author     Sam Yelman <sam.yelman@temple.edu>
  */
+
+use dokuwiki\HTTP\DokuHTTPClient;
+
 class admin_plugin_saml extends DokuWiki_Admin_Plugin
 {
     protected $xml = '';
