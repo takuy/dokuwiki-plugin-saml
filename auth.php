@@ -227,7 +227,9 @@ class auth_plugin_saml extends auth_plugin_authplain
         $userdata = ['user' => '', 'mail' => '', 'name' => '', 'grps' => []];
         foreach ($attributes as $key => $attr) {
             $data = $this->saml->getAttribute($attr);
-            if ($data === null) throw new \Exception('SAML Response is missing attribute ' . $attr);
+            if (($attr !== $attributes['grps']) and ($data === null)) {
+                throw new \Exception('SAML Response is missing attribute ' . $attr);
+            }
             $userdata[$key] = $data;
         }
 
