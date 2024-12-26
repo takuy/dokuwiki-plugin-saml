@@ -16,7 +16,8 @@ class auth_plugin_saml extends auth_plugin_authplain
         parent::__construct();
 
         $this->cando['external'] = true;
-        $this->cando['logoff'] = true;
+        /* logout makes no sense in case auf always auto_login */
+        $this->cando['logout'] = $this->getConf("auto_login") !== 'always';
         /* We only want auth_plain for e-mail tracking and group storage */
         $this->cando['addUser'] = false;
         $this->cando['modLogin'] = false;
